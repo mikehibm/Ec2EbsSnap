@@ -181,6 +181,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="MIT-LICENSE.txt" />
     <Content Include="README.txt" />
     <Content Include="README_JP.txt" />
   </ItemGroup>

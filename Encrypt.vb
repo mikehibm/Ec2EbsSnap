@@ -1,4 +1,9 @@
-﻿Imports System.Security.Cryptography
+﻿'
+' Copyright (c) 2011 Makoto Ishida
+' Please see the file MIT-LICENSE.txt for copying permission.
+'
+
+Imports System.Security.Cryptography
 Imports System.Text
 
 Public Class Encrypt

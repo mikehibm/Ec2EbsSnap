@@ -1,4 +1,9 @@
-﻿Module Module1
+﻿'
+' Copyright (c) 2011 Makoto Ishida
+' Please see the file MIT-LICENSE.txt for copying permission.
+'
+
+Module Module1
 
     Sub Main(ByVal args() As String)
         Console.WriteLine("===========================================")
@@ -63,7 +68,7 @@
 
     Private Sub ShowDecrypted(ByVal str As String)
         Console.WriteLine("Decrypted: ")
-        Console.WriteLine(Encrypt.Decrypt(Str))
+        Console.WriteLine(Encrypt.Decrypt(str))
     End Sub
 
     Private Sub ListSnapshots(ByVal vol_id As String, ByVal description As String)
