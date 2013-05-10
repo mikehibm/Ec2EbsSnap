@@ -15,7 +15,7 @@ Module Module1
                 Case "/L" : ListSnapshots(args(1), "")
                 Case "/C" : CreateSnapshot(args(1), "")
                 Case "/ENC" : ShowEncrypted(args(1))
-                    'Case "/DEC" : ShowDecrypted(args(1))
+                Case "/DEC" : ShowDecrypted(args(1))
                 Case Else : ShowHelp()
             End Select
 
