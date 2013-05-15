@@ -239,7 +239,10 @@ Public Class Ec2EbsManager
 
         If max_generation <= 0 Then Return snapshotList
 
+        'Sort descending by Snapshort start time.
         Dim newList As New List(Of Snapshot)
+        newList.Sort(New StartTimeComparer())
+
         If max_generation > snapshotList.Count Then max_generation = snapshotList.Count
         For i As Integer = 0 To snapshotList.Count - 1
             If (i < snapshotList.Count - max_generation) Then
@@ -250,6 +253,14 @@ Public Class Ec2EbsManager
         Next
         Return newList
     End Function
+
+    Private Class StartTimeComparer
+        Implements System.Collections.Generic.IComparer(Of Snapshot)
+
+        Public Function Compare(x As Snapshot, y As Snapshot) As Integer Implements IComparer(Of Snapshot).Compare
+            Return x.StartTime.CompareTo(y.StartTime) * -1
+        End Function
+    End Class
 
     Private Shared Function FilterByAge( _
                                 ByVal snapshotList As List(Of Snapshot), _
