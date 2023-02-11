@@ -26,7 +26,7 @@ Public Class Ec2EbsManager
         Return s
     End Function
 
-    Private Shared Function GetAmazonEC2() As AmazonEC2
+    Private Shared Function GetAmazonEC2() As Amazon.EC2.AmazonEC2Client
         Dim appConfig As NameValueCollection = ConfigurationManager.AppSettings
 
         Dim config As AmazonEC2Config = New AmazonEC2Config()
@@ -34,8 +34,7 @@ Public Class Ec2EbsManager
 
         Dim accessKey As String = Encrypt.Decrypt(appConfig("EncryptedAWSAccessKey"))
         Dim secretKey As String = Encrypt.Decrypt(appConfig("EncryptedAWSSecretKey"))
-        Dim ec2 As AmazonEC2 = AWSClientFactory.CreateAmazonEC2Client(accessKey, secretKey, config)
-
+        Dim ec2 As AmazonEC2Client = New AmazonEC2Client(accessKey, secretKey, config)
         Return ec2
     End Function
 
@@ -59,23 +58,21 @@ Public Class Ec2EbsManager
     ''' <param name="vol_id"></param>
     ''' <remarks></remarks>
     Public Shared Sub ListSnapshots(ByVal vol_id As String, ByVal description As String)
-        Dim ec2 As AmazonEC2 = GetAmazonEC2()
+        Dim ec2 As AmazonEC2Client = GetAmazonEC2()
 
         Dim request As DescribeSnapshotsRequest = New DescribeSnapshotsRequest()
-        request.WithOwner("self")
+        request.OwnerIds.Add("self")
 
         If Not String.IsNullOrEmpty(vol_id) Then
             Dim params As New Amazon.EC2.Model.Filter()
             params.Name = "volume-id"
-            Dim lst As New List(Of String)
-            lst.Add(vol_id)
-            params.Value = lst
-            request.WithFilter(params)
+            params.Values.Add(vol_id)
+            request.Filters.Add(params)
         End If
 
         Try
             Dim ec2Response As DescribeSnapshotsResponse = ec2.DescribeSnapshots(request)
-            Dim snapshotList As List(Of Snapshot) = ec2Response.DescribeSnapshotsResult.Snapshot
+            Dim snapshotList As List(Of Snapshot) = ec2Response.Snapshots
 
             snapshotList = FilterByDescription(snapshotList, description)
 
@@ -83,13 +80,8 @@ Public Class Ec2EbsManager
 
             For Each itm As Snapshot In snapshotList
                 Console.Write(itm.SnapshotId & " (" + itm.Progress + ") ")
-
-                Dim dt As DateTime
-                If DateTime.TryParse(itm.StartTime, dt) Then
-                    Console.Write(dt.ToString("yyyy/MM/dd HH:mm:ss "))
-                End If
+                Console.Write(itm.StartTime.ToString("yyyy/MM/dd HH:mm:ss "))
                 Console.Write(itm.Description)
-
                 Console.WriteLine()
             Next
 
@@ -113,18 +105,18 @@ Public Class Ec2EbsManager
         End If
 
 
-        Dim ec2 As AmazonEC2 = GetAmazonEC2()
+        Dim ec2 As AmazonEC2Client = GetAmazonEC2()
 
         If String.IsNullOrEmpty(description) Then description = ConfigurationManager.AppSettings("SnapshotDescription")
         If String.IsNullOrEmpty(description) Then description = "[AUTO]"
 
         Dim request As CreateSnapshotRequest = New CreateSnapshotRequest()
-        request.WithVolumeId(vol_id)
-        request.WithDescription(description)
+        request.VolumeId = vol_id
+        request.Description = description
 
         Try
             Dim ec2Response As CreateSnapshotResponse = ec2.CreateSnapshot(request)
-            Dim snapshotId As String = ec2Response.CreateSnapshotResult.Snapshot.SnapshotId
+            Dim snapshotId As String = ec2Response.Snapshot.SnapshotId
             Console.WriteLine("Successfully started to create new snapshot " & snapshotId & ".")
             result = True
 
@@ -145,23 +137,21 @@ Public Class Ec2EbsManager
     ''' <param name="max_age"></param>
     ''' <remarks></remarks>
     Public Shared Sub DeleteSnapshot(ByVal vol_id As String, ByVal description As String, ByVal max_generation As Integer, ByVal max_age As String)
-        Dim ec2 As AmazonEC2 = GetAmazonEC2()
+        Dim ec2 As AmazonEC2Client = GetAmazonEC2()
 
         Dim request As DescribeSnapshotsRequest = New DescribeSnapshotsRequest()
-        request.WithOwner("self")
+        request.OwnerIds.Add("self")
 
         If Not String.IsNullOrEmpty(vol_id) Then
             Dim params As New Amazon.EC2.Model.Filter()
             params.Name = "volume-id"
-            Dim lst As New List(Of String)
-            lst.Add(vol_id)
-            params.Value = lst
-            request.WithFilter(params)
+            params.Values.Add(vol_id)
+            request.Filters.Add(params)
         End If
 
         Try
             Dim ec2Response As DescribeSnapshotsResponse = ec2.DescribeSnapshots(request)
-            Dim snapshotList As List(Of Snapshot) = ec2Response.DescribeSnapshotsResult.Snapshot
+            Dim snapshotList As List(Of Snapshot) = ec2Response.Snapshots
             Dim deleteList As New List(Of Snapshot)
 
             snapshotList = FilterByDescription(snapshotList, description)
@@ -175,14 +165,8 @@ Public Class Ec2EbsManager
             Else
                 For Each itm As Snapshot In deleteList
                     Console.Write("*** DELETING " & itm.SnapshotId & " ")
-
-                    Dim dt As DateTime
-                    If DateTime.TryParse(itm.StartTime, dt) Then
-                        Console.Write(dt.ToString("yyyy/MM/dd HH:mm:ss "))
-                    End If
-
+                    Console.Write(itm.StartTime.ToString("yyyy/MM/dd HH:mm:ss "))
                     Console.WriteLine()
-
                     DeleteOneSnapshot(itm.SnapshotId)
                 Next
             End If
@@ -201,16 +185,14 @@ Public Class Ec2EbsManager
         '        return  
         '#End If
 
-        Dim ec2 As AmazonEC2 = GetAmazonEC2()
+        Dim ec2 As AmazonEC2Client = GetAmazonEC2()
 
         Dim request As DeleteSnapshotRequest = New DeleteSnapshotRequest()
-        request.WithSnapshotId(snapshot_id)
+        request.SnapshotId = snapshot_id
 
         Try
             Dim ec2Response As DeleteSnapshotResponse = ec2.DeleteSnapshot(request)
-            Dim response As String = ec2Response.ToString
             Console.WriteLine("Successfully requested to delete the snapshot " & snapshot_id & ".")
-
         Catch ex As AmazonEC2Exception
             HandleEC2Error(ex)
         End Try
@@ -280,14 +262,11 @@ Public Class Ec2EbsManager
         End Select
 
         Dim newList As New List(Of Snapshot)
-        Dim dt As DateTime
         For Each sn As Snapshot In snapshotList
-            If DateTime.TryParse(sn.StartTime, dt) Then
-                If DateTime.Now.Subtract(dt).CompareTo(span) <= 0 Then
-                    newList.Add(sn)
-                Else
-                    deleteList.Add(sn)
-                End If
+            If DateTime.Now.Subtract(sn.StartTime).CompareTo(span) <= 0 Then
+                newList.Add(sn)
+            Else
+                deleteList.Add(sn)
             End If
         Next
         Return newList
